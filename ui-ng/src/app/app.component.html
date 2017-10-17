@@ -1,0 +1,41 @@
+<!--The content below is only a placeholder and can be replaced.-->
+<link rel="stylesheet" href="https://unpkg.com/clarity-icons/clarity-icons.min.css" />
+<div class="main-container">
+    <div class="alert alert-app-level">
+    </div>
+    <header class="header header-6">
+        <div class="branding">
+        
+            <a href="/" class="nav-link">
+                <span class="title">Hermosa Circulo</span>
+            </a>
+        </div>
+        <div class="header-nav">
+            <a routerLink="/three" routerLinkActive="active" class="nav-link nav-text">3D</a>
+            <a routerLink="/about" routerLinkActive="active" class="nav-link nav-text">About</a>
+            <a routerLink="/docs" routerLinkActive="active" class="nav-link nav-text">Docs</a>
+            <form class="search">
+                <label for="search_input">
+                    <input id="search_input" type="text" placeholder="Search for keywords...">
+                </label>
+            </form>
+            <div class="header-actions">
+                <clr-dropdown>
+                    <button class="nav-icon" clrDropdownTrigger>
+                        <clr-icon shape="user"></clr-icon>
+                        <clr-icon shape="caret down"></clr-icon>
+                    </button>
+                    <clr-dropdown-menu *clrIfOpen clrPosition="bottom-right">
+                        <a href="..." clrDropdownItem>About</a>
+                        <a href="..." clrDropdownItem>Preferences</a>
+                        <a href="..." clrDropdownItem>Log out</a>
+                    </clr-dropdown-menu>
+                </clr-dropdown>
+            </div>
+        </div>
+    </header>
+    <div class="content-container">
+        <router-outlet></router-outlet>
+    </div>
+</div>
+
