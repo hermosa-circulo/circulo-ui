@@ -1,0 +1,9 @@
+version: '3'
+
+services:
+    api:
+        image: hermosa/circulo-ui
+        build: ./
+        restart: always
+        ports:
+          - 8888:80
