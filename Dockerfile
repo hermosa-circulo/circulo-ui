@@ -4,7 +4,6 @@ RUN mkdir -p /resources
 
 #RUN npm install -g @angular/cli
 
-COPY ./ui-ng/ /resources/
 COPY entrypoint.sh /
 
 WORKDIR /resources

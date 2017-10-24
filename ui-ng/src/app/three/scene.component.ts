@@ -5,6 +5,9 @@ import * as THREE from 'three';
 import * as objloader from 'three-obj-loader';
 const OBJLoader = new objloader(THREE);
 
+import * as jsonloader from 'three-json-loader';
+const JSONLoader = new jsonloader(THREE);
+
 @Directive({ selector: 'three-scene' })
  
 export class SceneComponent {
@@ -16,7 +19,7 @@ export class SceneComponent {
 
   private dom: BrowserDomAdapter;
   ngAfterContentInit() {
-    for (var i = 0; i < 5; i++) {   
+    for (var i = 0; i < 3; i++) {   
       let scene = new THREE.Scene();
 
       let el = this.dom.createElement("div");
@@ -35,17 +38,22 @@ export class SceneComponent {
       camera.position.set( -90,0,0);
       camera.lookAt(scene.position);
       scene.userData.camera = camera;
-      
-      let loader = new THREE.OBJLoader();
-      //console.log(typeof loader.load);
-      loader.load(
-        'assets/teddy.obj',
-         function(object) {
-           scene.add(object);
-           object.rotateX( 45 * Math.PI / 180 );
-         }
-      );
-        
+      var X,Y,Z;
+      for (X = 0; X < 5; X++) {
+      for (Y = 0; Y < 5; Y++) {
+      for (Z = 0; Z < 5; Z++) {
+        let loader = new THREE.OBJLoader();
+        //console.log(typeof loader.load);
+        loader.load(
+           '/api/cube/'+X*10+'-'+Y*10+'-'+Z*10,
+           function(object) {
+             scene.add(object);
+             //object.rotateX( 45 * Math.PI / 180 );
+           }
+        );
+      } 
+      }
+      }
       //let geometry = new THREE.BoxGeometry( 10, 10, 10 );
       //let material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
       //let cube = new THREE.Mesh( geometry, material );

@@ -1,9 +1,35 @@
 version: '3'
 
 services:
-    api:
+    ui:
         image: hermosa/circulo-ui
         build: ./
+        volumes:
+          - ./ui-ng:/resources
         restart: always
         ports:
+          - 80:80
+    proxy:
+        image: nginx:latest
+        volumes:
+          - ./nginx.conf:/etc/nginx/nginx.conf
+        ports:
           - 8888:80
+        links:
+          - api
+          - ui
+          - db
+    api:
+        image: golang:api
+        volumes:
+          - ./main.go:/main.go
+          - ./api/:/go/src/github.com/hermosa-circulo/circulo-tools/api/
+          - ./igademo/:/go/src/github.com/hermosa-circulo/circulo-tools/igademo
+        command: go run /main.go
+        ports:
+          - 8000:8000
+    db:
+        image: mongo:latest
+        ports:
+          - 28000:27017
+

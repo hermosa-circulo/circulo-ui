@@ -55,6 +55,5 @@ func (r *Router) NewRoute() *Route {
 }
 
 func (r *Router) Path(tpl string) *Route {
-    fmt.Println("o4")
     return r.NewRoute().Path(tpl)
 }
