@@ -21,6 +21,7 @@ services:
           - db
     api:
         image: golang:api
+        build: ./api/
         volumes:
           - ./main.go:/main.go
           - ./api/:/go/src/github.com/hermosa-circulo/circulo-tools/api/
@@ -28,6 +29,8 @@ services:
         command: go run /main.go
         ports:
           - 8000:8000
+        links:
+          - db
     db:
         image: mongo:latest
         ports:
