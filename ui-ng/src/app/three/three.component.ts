@@ -6,6 +6,7 @@ import { Input, Component, HostListener } from '@angular/core';
   styleUrls: [
               '../../../node_modules/clarity-ui/clarity-ui.min.css'
   ],
+  providers: [],
 })
 export class ThreeComponent {
 

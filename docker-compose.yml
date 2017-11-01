@@ -7,6 +7,8 @@ services:
         volumes:
           - ./ui-ng:/resources
         restart: always
+        environment:
+          - DOMAIN_NAME=[your domain]
         ports:
           - 80:80
     proxy:
@@ -24,8 +26,8 @@ services:
         build: ./api/
         volumes:
           - ./main.go:/main.go
-          - ./api/:/go/src/github.com/hermosa-circulo/circulo-tools/api/
-          - ./igademo/:/go/src/github.com/hermosa-circulo/circulo-tools/igademo
+          - ./api/:/go/src/github.com/hermosa-circulo/circulo-ui/api/
+          - ./igademo/:/go/src/github.com/hermosa-circulo/circulo-ui/igademo
         command: go run /main.go
         ports:
           - 8000:8000

@@ -4,249 +4,182 @@ import (
     "fmt"
     "math/rand"
     "time"
+    "strings"
     "strconv"
 
     mgo "gopkg.in/mgo.v2"
     "gopkg.in/mgo.v2/bson"
 )
 
+type Gene struct {
+    chrom []byte
+    fit   int
+}
+//////// Utils /////////////////////////
+func CopyPop(p []Gene) []Gene {
+    tmpgenes := []Gene{}
+    for _, gene := range p {
+        tmpchrom := make([]byte,len(gene.chrom))
+        copy(tmpchrom,gene.chrom)
+        tmpgene := Gene{tmpchrom,gene.fit}
+        tmpgenes = append(tmpgenes,tmpgene)
+    }
+    return tmpgenes
+}
 
+func CreateGenes(size int, length int) []Gene {
+    rand.Seed(time.Now().UnixNano())
+    genes := []Gene{}
+    for i:=0;i<size;i++ {
+        chrom := []byte{}
+        for j:=0;j<length;j++ {
+            chrom = append(chrom,byte(rand.Intn(255)))
+        }
+        gene := Gene{chrom,1}
+        genes = append(genes,gene)
+    }
+    return genes
+}
+
+//////// Caluclation Fitness ///////////
+func BitCount(buf byte) int{
+    b:= (buf & 0x55)+((buf & 0xaa)>>1)
+    b = (b & 0x33)+((b & 0xcc)>>2)
+    b = (b & 0x0f)+((b & 0xf0)>>4)
+    return int(b)
+}
+
+func MatchCount(buf1 byte, buf2 byte) int{
+    b := buf1 ^ buf2
+    return BitCount(^b)
+}
+
+func ArrayMatchCount(buf1 []byte, buf2 []byte) int {
+    sum := 0
+    for i:=0;i<len(buf1);i++ {
+        sum = sum + MatchCount(buf1[i],buf2[i])
+    }
+    return sum
+}
+
+/////// Sort Algorithm /////////////////
+
+func BubbleSort(p []Gene) {
+    for i:=0;i<len(p);i++{
+        for j:=len(p)-1;j>i;j--{
+            if(p[j].fit < p[j-1].fit){
+                tmpfit := p[j].fit
+                tmpchrom := make([]byte,len(p[j].chrom))
+                copy(tmpchrom,p[j].chrom)
+                p[j].fit = p[j-1].fit
+                copy(p[j].chrom, p[j-1].chrom)
+                p[j-1].fit = tmpfit
+                copy(p[j-1].chrom, tmpchrom)
+            }
+        }
+    }
+}
+
+/////// Elete Select /////////////////
+
+func EleteSelection(p []Gene, num int) []Gene {
+    pop := CopyPop(p)
+    BubbleSort(pop)
+    return pop[len(p)-num:]
+}
+
+/////// Crossover    /////////////////
+
+func OnePointCrossover(chrom1 []byte, chrom2 []byte) ([]byte, []byte){
+    rand.Seed(time.Now().UnixNano())
+    ran := rand.Intn(len(chrom1)*8)
+    locate := int(float32(ran)/8)
+    point := ran%8
+    mask := []byte{0x00,0x80,0xc0,0xe0,0xf0,0xf8,0xfc,0xfe}
+    next_chrom1 := make([]byte,len(chrom1))
+    next_chrom2 := make([]byte,len(chrom2))
+    for i:=0;i<locate;i++ {
+        next_chrom1[i] = chrom2[i]
+        next_chrom2[i] = chrom1[i]
+    }
+    next_chrom2[locate] = (chrom1[locate] & mask[point]) + (chrom2[locate] &(^mask[point]))
+    next_chrom1[locate] = (chrom2[locate] & mask[point]) + (chrom1[locate] &(^mask[point]))
+    for i:=locate+1;i<len(chrom1);i++ {
+        next_chrom1[i] = chrom1[i]
+        next_chrom2[i] = chrom2[i]
+    }
+    return next_chrom1, next_chrom2
+}
+
+
+/////// Mutation    /////////////////
+
+func Mutation(chrom []byte) []byte{
+    rand.Seed(time.Now().UnixNano())
+    onebit := []byte{ 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 }
+    ran1 := rand.Intn(len(chrom))
+    ran2 := rand.Intn(8)
+    chrom[ran1] ^= onebit[ran2]
+    return chrom
+}
+
+////// Loop All Process ////////////
+func Cycle(p []Gene,ans []byte, cycle int, elete_rate float32, cross_rate float32, mutate_rate float32) []Gene{
+    rand.Seed(time.Now().UnixNano())
+    p_len := len(p)
+    elete_num := int(elete_rate*float32(len(p)))
+    cross_num := int(cross_rate*float32(len(p)))
+    for i:=0;i<cycle;i++ {
+        //Calculate Fitness
+        for j:=0;j<len(p);j++ {
+            p[j].fit = ArrayMatchCount(ans, p[j].chrom)
+        }
+        elete := EleteSelection(p,elete_num)
+        for j:=0;j<cross_num;j++ {
+            ran1 := rand.Intn(len(elete))
+            ran2 := rand.Intn(len(elete))
+            next_chrom1, next_chrom2 := OnePointCrossover(elete[ran1].chrom,elete[ran2].chrom)
+            p = append(p, Gene{next_chrom1,1})
+            p = append(p, Gene{next_chrom2,1})
+        }
+        for j:=0;j<len(p);j++ {
+            p[j].fit = ArrayMatchCount(ans, p[j].chrom)
+        }
+        for j:=0;j<len(p);j++ {
+            ranmute := rand.Float32()
+            if ranmute < mutate_rate {
+                Mutation(p[j].chrom)
+            }
+        }
+        p = EleteSelection(p,p_len)
+    }
+    return p
+}
+
+/////// Mongo///
 type Person struct {
         Group string
         Gene string
 }
 
-type Gene struct {
-    dna []int
-    fitness float64
-}
-
-type Population struct {
-    genes []Gene
-}
-
-func (g *Gene) CalcFitness(ans [][]int){
-    g.fitness = 0
-    for i:=0;i<len(ans);i++{
-        for j:=0;j<len(g.dna);j++{
-            if ans[i][j] == g.dna[j] {
-               g.fitness += 1
-            }
-        }
-    }
-}
-
-func (p *Population) CalcFitness(ans [][]int) {
-    for i:=0; i< len(p.genes); i++ {
-        p.genes[i].CalcFitness(ans)
-    }
-}
-
-func Addgene(g []Gene, g_add Gene) []Gene{
-    g = append(g , g_add)
-    return g
-}
-
-func CreatePopulation( size int, leng int ) Population {
-    population := Population{}
-    for i:=0; i< size ; i++ {
-        var dna_tmp []int
-        for j := 0; j < leng ; j++ {
-            rand.Seed(time.Now().UnixNano())
-            ran := rand.Intn(2)
-            dna_tmp = append(dna_tmp, ran)
-        }
-        gene := Gene{dna_tmp, 1}
-        population.genes = Addgene(population.genes, gene)
-    }
-    return population
-}
-
-func (p *Population) SelectRoulette() {
-    rand.Seed(time.Now().UnixNano())
-    fitnesssum :=  0.0
-    for i:=0;i<len(p.genes);i++{
-        fitnesssum = fitnesssum + p.genes[i].fitness
-    }
-    temp_genes := []Gene{}
-    for i:=0;i<len(p.genes);i++{
-        ran := rand.Float64()*fitnesssum
-        sum := 0.0
-        for j:=0;j<len(p.genes);j++{
-            sum = sum + p.genes[j].fitness
-            if ran <= sum {
-                temp_genes = Addgene(temp_genes, p.genes[i])
-                break
-            }
-        }
-    }
-    for i:=0;i<len(p.genes);i++{
-        p.genes[i] = temp_genes[i]
-    }
-}
-
-func (p *Population) Shufflegenes(){
-    n :=  len(p.genes)
-    rand.Seed(time.Now().UnixNano())
-    for i:=n -1; i>=0;i-- {
-        ran := rand.Intn(i+1)
-        temp := []int{}
-        tempfit := p.genes[i].fitness
-        for j:=0;j<len(p.genes[i].dna);j++ {
-            temp = append(temp,p.genes[i].dna[j])
-        }
-        for j:=0;j<len(p.genes[i].dna);j++ {
-            p.genes[i].dna[j] = p.genes[ran].dna[j]
-            p.genes[ran].dna[j] = temp[j]
-        }
-        p.genes[i].fitness = p.genes[ran].fitness
-        p.genes[ran].fitness = tempfit
-    }
-}
-
-func (p *Population) Maxfitness() float64{
-    max := 0.0
-    for i:=0;i<len(p.genes);i++ {
-        if max < p.genes[i].fitness {
-           max = p.genes[i].fitness
-        }
-    }
-    return max
-}
-
-func (p *Population) Print(){
-    for i := 0; i < len(p.genes); i++{
-        fmt.Println(p.genes[i])
-    }
-}
-
-func (p *Population) Crossover(g1 int, g2 int) []Gene{
-    next_genes := []Gene{}
-    c1 := make([]int,len(p.genes[g1].dna))
-    c2 := make([]int,len(p.genes[g2].dna))
-    c_temp := make([]int,len(c1))
-    copy(c1,p.genes[g1].dna)
-    copy(c2,p.genes[g2].dna)
-    copy(c_temp,c1)
-    temp := []int{}
-    rand.Seed(time.Now().UnixNano())
-    crosspoint := rand.Intn(len(p.genes[g1].dna))
-    temp = append(c1[:crosspoint],c2[crosspoint:]...)
-    temp_gene := Gene{temp, 0}
-    next_genes = append(next_genes, temp_gene)
-    temp = append(c2[:crosspoint],c_temp[crosspoint:]...)
-    temp_gene = Gene{temp, 0}
-    next_genes = append(next_genes, temp_gene)
-    return next_genes
-}
-
-func (p *Population) Mutation(per float64){
-    rand.Seed(time.Now().UnixNano())
-    for i := 0; i < len(p.genes); i++{
-        for j:=0;j<len(p.genes[i].dna);j++{
-            ran := rand.Float64()
-            if ran < per {
-                if p.genes[i].dna[j] == 0 {
-                    p.genes[i].dna[j] = 1
-                } else {
-                    p.genes[i].dna[j] = 0
-                }
-            }
-        }
-    }
-}
-
-func Sort(genes []Gene) {
-    for i:=0; i< len(genes)-1;i++ {
-        for j:=len(genes)-1;j>i;j-- {
-            if genes[j-1].fitness > genes[j].fitness {
-                temp_f := genes[j-1].fitness
-                temp_dna := make([]int,len(genes[j-1].dna))
-                copy(temp_dna,genes[j-1].dna)
-                genes[j-1].fitness = genes[j].fitness
-                for k:=0;k<len(genes[j-1].dna);k++ {
-                    genes[j-1].dna[k] = genes[j].dna[k]
-                }
-                genes[j].fitness = temp_f
-                for k:=0;k<len(genes[j-1].dna);k++ {
-                    genes[j].dna[k] = temp_dna[k]
-                }
-            }
-        }
-    }
-}
-
-func (p *Population) Select( elite_length int , elite_flag int) Population{
-    temp_genes := []Gene{}
-    for i:=0;i<len(p.genes);i++{
-        temp_f := p.genes[i].fitness
-        temp_dna := make([]int, len(p.genes[i].dna))
-        copy(temp_dna, p.genes[i].dna)
-        temp_gene := Gene{temp_dna, temp_f}
-        temp_genes = Addgene(temp_genes,temp_gene)
-    }
-    Sort(temp_genes)
-    var result []Gene
-    if elite_flag == 1{
-        result = temp_genes[len(p.genes)-elite_length:]
-    } else {
-        result = temp_genes[:elite_length]
-    }
-    result_population := Population{result}
-    return result_population
-}
-
-func (p Population) Cycle(ans [][]int, cycle int, elite_per float64,cross_per float64, mutate_per float64) Population{
-    length := len(p.genes)
-    rand.Seed(time.Now().UnixNano())
-    elite_num := int(float64(length)*elite_per)
-    cross_num := int(float64(elite_num)*cross_per)
-    for i:=0;i<cycle;i++{
-        elite := p.Select(elite_num,1)
-        for j:=0; j< cross_num; j++ {
-           ran1 := rand.Intn(len(elite.genes))
-           ran2 := rand.Intn(len(elite.genes))
-           addgenes := elite.Crossover(ran1,ran2)
-           p.genes = Addgene(p.genes,addgenes[0])
-           p.genes = Addgene(p.genes,addgenes[1])
-        }
-        p.CalcFitness(ans)
-        p.Mutation(mutate_per)
-        p = p.Select(length,1)
-    }
-    return p
-}
-
-func ArrayString(array []int) string{
-    str := ""
-    for i:=0;i<len(array);i++{
-        str = str + strconv.Itoa(array[i])
-    }
-    return str
-}
-
-func StringArray(str string) []int{
-    array := []int{}
-    for _, c := range str {
-        int_c, _ := strconv.Atoi(string(c))
-        array = append(array,int_c)
-    }
-    return array
-}
-
-func PicPopulation(c *mgo.Collection, group string) Population{
-    population := Population{}
+func PicPopulation(c *mgo.Collection, group string) []Gene{
+    pop := []Gene{}
     result := []Person{}
     err := c.Find(bson.M{"group": group}).All(&result)
     if err != nil {
         fmt.Println(err)
     }
     for i:=0;i<len(result);i++ {
-        dna_tmp := StringArray(result[i].Gene)
-        gene := Gene{dna_tmp, 1}
-        population.genes = Addgene(population.genes, gene)
+        split_str := strings.Split(result[i].Gene,",")
+        chrom_tmp := []byte{}
+        for _, str := range split_str {
+            str_int, _ := strconv.Atoi(str)
+            chrom_tmp = append(chrom_tmp,byte(str_int))
+        }
+        gene := Gene{chrom_tmp, 1}
+        pop = append(pop, gene)
     }
-    return population
+    return pop
 }
 
 func DeletePopulation(c *mgo.Collection, group string) {
@@ -262,9 +195,13 @@ func DeletePopulation(c *mgo.Collection, group string) {
     }
 }
 
-func (p *Population)InsertPopulation(c *mgo.Collection, group string) {
-    for i:=0;i<len(p.genes);i++{
-        gene_str := ArrayString(p.genes[i].dna)
+func InsertPopulation(c *mgo.Collection, group string, pop []Gene) {
+    for i:=0;i<len(pop);i++{
+        gene_str := ""
+        for _,value := range pop[i].chrom {
+            gene_str = gene_str + strconv.Itoa(int(value)) +","
+        }
+        gene_str = strings.TrimRight(gene_str,",")
         err := c.Insert(&Person{group, gene_str})
         if err != nil {
             fmt.Println(err)
@@ -287,42 +224,29 @@ func CreatePopulationDB(group string,size int, length int) {
     session, _ := mgo.Dial("mongodb://db:27017/test")
     c := session.DB("test").C("Gene")
     defer session.Close()
+    pop := CreateGenes( size,length )
     DeletePopulation(c, group)
-    population := CreatePopulation( size,length )
-    population.InsertPopulation(c,group)
+    InsertPopulation(c,group,pop)
 }
 
-func UpdatePopulationDB(group string,cycle int,ans [][]int) {
+func UpdatePopulationDB(group string,cycle int,ans []byte) {
     session, _ := mgo.Dial("mongodb://db:27017/test")
     c := session.DB("test").C("Gene")
     defer session.Close()
-    population := PicPopulation(c, group)
-    population = population.Cycle(ans, cycle,0.3,0.9,0.01)
+    pop := PicPopulation(c, group)
+    pop = Cycle(pop, ans, cycle, 0.3, 0.8, 0.01)
     DeletePopulation(c, group)
-    population.InsertPopulation(c,group)
+    InsertPopulation(c,group,pop)
 }
 
-func PicGene(group string, pic []int) string{
+func PicGene( group string, pic int) string{
     session, _ := mgo.Dial("mongodb://db:27017/test")
     c := session.DB("test").C("Gene")
     defer session.Close()
-    population := PicPopulation(c, group)
-    elite := population.Select(len(population.genes),1)
-    return_str :="{"
-    for _, num := range pic {
-        return_str = return_str+ "{"+ArrayString(elite.genes[len(population.genes)-num].dna)+"},"
+    pop := PicPopulation(c, group)
+    str := ""
+    for j:=0;j<len(pop[pic].chrom);j++{
+        str = str + fmt.Sprintf("%b",pop[pic].chrom[j])
     }
-    return_str = return_str + "}"
-    return return_str
+    return str
 }
-
-
-/*func main(){
-    ans := [][]int{{}}
-    for i:=0;i<100;i++ {
-        ans[0] = append(ans[0],1)
-    }
-    group := "test"
-    CreatePopulationDB(group,80,100)
-    UpdatePopulationDB(group,10,ans)
-}*/

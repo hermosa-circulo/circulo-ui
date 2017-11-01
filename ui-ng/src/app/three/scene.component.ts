@@ -4,21 +4,25 @@ import * as THREE from 'three';
 
 import * as objloader from 'three-obj-loader';
 const OBJLoader = new objloader(THREE);
+import { Http, Response ,Headers, RequestOptions} from '@angular/http';
 
 import * as jsonloader from 'three-json-loader';
 const JSONLoader = new jsonloader(THREE);
 
 @Directive({ selector: 'three-scene' })
+
  
 export class SceneComponent {
 
   scenes: THREE.Scene[] = [];
-  constructor(private element: ElementRef) {
+  constructor(private element: ElementRef,private http: Http) {
     this.dom = new BrowserDomAdapter();
   }
 
   private dom: BrowserDomAdapter;
+  public resdata;
   ngAfterContentInit() {
+    let query = new Array("","","")
     for (var i = 0; i < 3; i++) {   
       let scene = new THREE.Scene();
 
@@ -35,29 +39,43 @@ export class SceneComponent {
       let light = new THREE.DirectionalLight( 0xffffff, 0.5 );
       light.position.set(0,250,0);
       let camera = new THREE.PerspectiveCamera(75,1,0.1,10000);
-      camera.position.set( -90,0,0);
+      camera.position.set( 10,0,0);
       camera.lookAt(scene.position);
       scene.userData.camera = camera;
-      var X,Y,Z;
-      for (X = 0; X < 5; X++) {
-      for (Y = 0; Y < 5; Y++) {
-      for (Z = 0; Z < 5; Z++) {
-        let loader = new THREE.OBJLoader();
-        //console.log(typeof loader.load);
-        loader.load(
-           '/api/cube/'+X*10+'-'+Y*10+'-'+Z*10,
-           function(object) {
-             scene.add(object);
-             //object.rotateX( 45 * Math.PI / 180 );
-           }
-        );
+      
+      let send_data = { Point: i  };
+      let trans_data = JSON.stringify(send_data);
+      let gene
+      var url = '/api/picgene'
+      var request = new XMLHttpRequest();
+      request.open('POST', url, false);
+      request.setRequestHeader("Content-type", "application/json");
+      request.send(trans_data);
+      if (request.status == 200 ) {
+        gene = request.responseText;
+      } else {
+        gene = "0000000000000001001001000100000000000000000000000000000000000000"
       } 
+  
+      let bit = gene.split('');
+      for (var x = 0; x < 4; x++){
+        for (var y = 0; y < 4; y++){
+          for (var z = 0; z < 4; z++){
+            if ( bit[(x*16)+(y*4)+z] == "1" ) {
+              query[i] = query[i] + x +"~"+ y +"~"+ z +"/" 
+            }
+          }
+        }
       }
-      }
-      //let geometry = new THREE.BoxGeometry( 10, 10, 10 );
-      //let material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-      //let cube = new THREE.Mesh( geometry, material );
+      query[i] = query[i].slice( 0, -1 ) ;
 
+      let loader = new THREE.OBJLoader();
+      loader.load(
+         '/api/cube/'+query[i],
+         function(object) {
+           scene.add(object);
+         }
+      );
       scene.add(light); 
       this.scenes.push( scene );
     }

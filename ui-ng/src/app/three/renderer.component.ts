@@ -54,9 +54,10 @@ export class RendererComponent {
       let camera = scene.userData.camera;
       //torus.position.set(0,0,500);
       //scene.children[0].rotation.y = Date.now() * 0.001 * i;
-      camera.position.x = 100 * Math.cos( this.angle );
-      camera.position.z = 100 * Math.sin( this.angle );
-      this.angle += 0.005;
+      camera.position.x = 10 * Math.cos( this.angle );
+      camera.position.y = 10 * Math.sin( this.angle );
+      camera.position.z = 10 * Math.sin( this.angle );
+      this.angle += 0.002;
       camera.lookAt(scene.position);
       this.renderers[i].render( scene, camera );
     }
