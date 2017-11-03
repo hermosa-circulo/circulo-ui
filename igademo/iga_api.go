@@ -9,13 +9,13 @@ import (
 
 func CreatePopAPI(w http.ResponseWriter, r *http.Request) {
     group := "test"
-    CreatePopulationDB(group,80,8)
+    CreatePopulationDB(group,80,125)
     fmt.Fprintf(w, "Population is Created")
 }
 
 func UpdatePopAPI(w http.ResponseWriter, r *http.Request) {
     ans := []byte{}
-    for i:=0;i<8;i++{
+    for i:=0;i<125;i++{
         ans = append(ans,0xff)
     }
     group := "test"

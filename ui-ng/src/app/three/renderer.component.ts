@@ -6,8 +6,8 @@ import { SceneComponent } from './scene.component';
 import { OrbitControlsComponent } from './controls/orbit.component';
 
 @Directive({ selector: 'three-renderer' })
-export class RendererComponent {
 
+export class RendererComponent {
 
   @ContentChild(SceneComponent) sceneComp: SceneComponent;
   @ContentChild(OrbitControlsComponent) orbitComponent: OrbitControlsComponent;
@@ -54,15 +54,14 @@ export class RendererComponent {
       let camera = scene.userData.camera;
       //torus.position.set(0,0,500);
       //scene.children[0].rotation.y = Date.now() * 0.001 * i;
-      camera.position.x = 10 * Math.cos( this.angle );
-      camera.position.y = 10 * Math.sin( this.angle );
-      camera.position.z = 10 * Math.sin( this.angle );
+      camera.position.x = 30 * Math.cos( this.angle );
+      camera.position.y = 30 * Math.sin( this.angle );
+      camera.position.z = 30 * Math.sin( this.angle );
       this.angle += 0.002;
       camera.lookAt(scene.position);
       this.renderers[i].render( scene, camera );
     }
     requestAnimationFrame(() => this.animate());
   }
-
 
 }

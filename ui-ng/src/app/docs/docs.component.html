@@ -1,22 +1,15 @@
 <div class="main-container">
   <div class="content-area">
     <div class="content-container">
-      <div class="content-area">
-        <div Markdown>
-           ### your markdown code
-    
-           - OK
-           - Why?
-         </div>
-	<div Markdown path="/assets/docs/database-architecture.md"></div>
-      </div>
       <nav class="sidenav">
         <section class="sidenav-content">
-          <a href="" class="nav-link active">
-             Nav Element 1
-          </a>   
+          <a href="" [routerLink]="['/docs',{outlets:{docssub:'introduction'}}]" class="nav-link active">Introduction</a> 
+          <a href="" [routerLink]="['/docs',{outlets:{docssub:'database'}}]" class="nav-link" >Database</a>
         </section>
       </nav>
+      <div class="content-area">
+        <router-outlet name="docssub"></router-outlet>
+      </div>
     </div>
   </div>
 </div>

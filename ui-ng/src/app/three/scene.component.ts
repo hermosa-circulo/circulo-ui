@@ -39,7 +39,7 @@ export class SceneComponent {
       let light = new THREE.DirectionalLight( 0xffffff, 0.5 );
       light.position.set(0,250,0);
       let camera = new THREE.PerspectiveCamera(75,1,0.1,10000);
-      camera.position.set( 10,0,0);
+      camera.position.set( 100,0,0);
       camera.lookAt(scene.position);
       scene.userData.camera = camera;
       
@@ -58,10 +58,11 @@ export class SceneComponent {
       } 
   
       let bit = gene.split('');
-      for (var x = 0; x < 4; x++){
-        for (var y = 0; y < 4; y++){
-          for (var z = 0; z < 4; z++){
-            if ( bit[(x*16)+(y*4)+z] == "1" ) {
+      let arealen = 10;
+      for (var x = 0; x < arealen; x++){
+        for (var y = 0; y < arealen; y++){
+          for (var z = 0; z < arealen; z++){
+            if ( bit[(x*arealen*arealen)+(y*arealen)+z] == "1" ) {
               query[i] = query[i] + x +"~"+ y +"~"+ z +"/" 
             }
           }
